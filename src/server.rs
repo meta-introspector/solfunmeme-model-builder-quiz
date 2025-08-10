@@ -6,9 +6,10 @@ use tokio::signal;
 use tokio::sync::oneshot; 
 use std::sync::{Arc, Mutex}; 
  
-use crate::model_core::Model; // Assuming Model is in model_core.rs 
-use crate::api_types::AppState; // Assuming AppState is in api_types.rs 
-use crate::api_handlers::{status_handler, stop_handler, quiz_handler, answer_handler, debug_answer_handler}; // Assuming handlers are in api_handlers.rs 
+use crate::term_quiz_master::quiz_logic::Model; 
+//use crate::term_quiz_master::term_entry::Question; 
+use crate::api_types::AppState; 
+use crate::api_handlers::{status_handler, stop_handler, quiz_handler, answer_handler, debug_answer_handler}; 
  
 pub async fn run_server(model_arc: Arc<Mutex<Model>>) { 
     let (shutdown_tx, shutdown_rx) = oneshot::channel(); 

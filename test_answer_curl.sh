@@ -1,0 +1,1 @@
+curl -X POST -H "Content-Type: application/json" -d '{"question_id":1,"submitted_embedding":[1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0]}' http://127.0.0.1:3000/answer

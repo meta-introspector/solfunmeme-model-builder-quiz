@@ -1,33 +1,5 @@
-use crate::model_core::{Model, Question};
-
-pub fn handle_quiz_command(model: &mut Model) {
-    if let Some(question) = model.get_question() {
-        println!("Question ID: {}", question.id);
-        println!("Question Text: {}", question.text);
-        println!("Current Embedding: {:?}", question.embedding);
-    } else {
-        println!("No questions available.");
-    }
-}
-
-pub fn handle_answer_command(model: &mut Model, question_id: usize, submitted_embedding: Vec<f32>) {
-    if let Some(question) = model.questions.get_mut(question_id) {
-        let distance = Model::calculate_distance(&question.embedding, &submitted_embedding);
-        let is_correct = distance < 0.1; // Threshold for correctness
-
-        if !is_correct {
-            model.update_embedding(question_id, submitted_embedding.clone());
-        }
-        model.update_weight(question_id, is_correct);
-        println!("Answer submitted for Question ID: {}", question_id);
-        println!("Correct: {}", is_correct);
-        if !is_correct {
-            println!("Embedding updated.");
-        }
-    } else {
-        println!("Question ID {} not found.", question_id);
-    }
-}
+use crate::term_quiz_master::quiz_logic::Model;
+use crate::term_quiz_master::term_entry::Question;
 
 pub fn handle_query_command(model: &Model, terms: &[String]) {
     if terms.is_empty() {
@@ -43,20 +15,19 @@ pub fn handle_query_command(model: &Model, terms: &[String]) {
                 println!("\nQuerying for individual term: \"{}\"", term_str);
                 println!("Current Embedding: {:?}\n", question.embedding);
 
-                let similar_embeddings = model.find_similar_embeddings(question);
+                let similar_embeddings = model.find_similar_embeddings(&question.text);
                 if !similar_embeddings.is_empty() {
                     println!("Most Similar Embeddings:");
-                    for (sim_q, distance) in similar_embeddings {
+                    for sim_q in similar_embeddings {
+                        let distance = Question::calculate_distance(&question.embedding, &sim_q.embedding);
                         println!("  - ID: {}, Text: {}, Distance: {:.4}, Embedding: {:?}\n", sim_q.id, sim_q.text, distance, sim_q.embedding);
                     }
                 } else {
                     println!("No similar embeddings found for \"{}\".\n", term_str);
                 }
-            } else {
-                println!("Term \"{}\" not found in embeddings. Skipping individual query.\n", term_str);
             }
         }
-        println!("--- End Individual Term Queries ---\n+");
+        println!("--- End Individual Term Queries ---\n");
     }
 
 
@@ -88,16 +59,16 @@ pub fn handle_query_command(model: &Model, terms: &[String]) {
         id: usize::MAX, // Use a dummy ID that won't conflict
         text: format!("Combined({})", terms.join(", ")),
         embedding: combined_embedding,
-        is_missing_embedding: false,
     };
 
     println!("--- Combined Query ---");
-    println!("Combined Embedding for input terms: {:?}", combined_question.embedding);
+    println!("Combined Embedding for input terms: {:?}\n", combined_question.embedding);
 
-    let similar_embeddings = model.find_similar_embeddings(&combined_question);
+    let similar_embeddings = model.find_similar_embeddings(&combined_question.text);
     if !similar_embeddings.is_empty() {
         println!("\nMost Similar Embeddings to combined query:");
-        for (sim_q, distance) in similar_embeddings {
+        for sim_q in similar_embeddings {
+            let distance = Question::calculate_distance(&combined_question.embedding, &sim_q.embedding);
             println!("  - ID: {}, Text: {}, Distance: {:.4}, Embedding: {:?}\n", sim_q.id, sim_q.text, distance, sim_q.embedding);
         }
     } else {
@@ -111,29 +82,4 @@ pub fn handle_query_command(model: &Model, terms: &[String]) {
     // Placeholder for Documentation integration
     println!("\n--- Documentation Information (Placeholder) ---");
     println!("(Would search documentation for information related to \"{}\")", terms.join(", "));
-}
-
-pub fn handle_add_vector_command(model: &mut Model, term: &str, embedding_str: &str) {
-    let submitted_embedding = crate::cli::parse_embedding(embedding_str)
-        .expect("Invalid embedding format");
-
-    // Check if term already exists
-    if model.questions.iter().any(|q| q.text == term) {
-        println!("Term \"{}\" already exists. Use 'answer' command to update its embedding.", term);
-        return;
-    }
-
-    let new_id = model.questions.len(); // Simple sequential ID
-    let new_question = Question {
-        id: new_id,
-        text: term.to_string(),
-        embedding: submitted_embedding,
-        is_missing_embedding: false, // It's explicitly added, so not missing
-    };
-
-    model.questions.push(new_question);
-    model.weights.push(1.0); // Give it a default weight
-    model.save();
-
-    println!("Successfully added new term \"{}\" with ID {}.", term, new_id);
 }

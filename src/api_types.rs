@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use tokio::sync::oneshot;
-use crate::model_core::Model;
+use crate::term_quiz_master::quiz_logic::Model;
 
 // Application State
 #[derive(Clone)]
@@ -17,7 +17,8 @@ pub struct QuizQuestion {
     pub text: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)] // Added Debug
+#[serde(deny_unknown_fields)] // Added this line
 pub struct Answer {
     pub question_id: usize,
     pub submitted_embedding: Vec<f32>,
