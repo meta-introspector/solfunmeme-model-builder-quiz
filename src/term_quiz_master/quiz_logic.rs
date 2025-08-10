@@ -94,19 +94,34 @@ impl Model {
         }
     }
 
-    pub fn find_similar_embeddings(&self, question_text: &str) -> Vec<Question> {
-        if let Some(embedding) = self.questions.iter().find(|q| q.text == question_text).map(|q| &q.embedding) {
-            let mut distances: Vec<(usize, f32)> = self.questions.iter().map(|q| {
-                let dist = Question::calculate_distance(embedding, &q.embedding);
-                (q.id, dist)
-            }).collect();
-
-            distances.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-
-            distances.iter().take(5).map(|(id, _)| self.questions[*id].clone()).collect()
-        } else {
-            vec![]
+    pub fn find_similar_embeddings(&self, query_term: &str) -> Vec<&Question> {
+        let mut similarities: Vec<(&Question, f32)> = Vec::new();
+        if let Some(query_question) = self.questions.iter().find(|q| q.text == query_term) {
+            for question in self.questions.iter() {
+                if question.id != query_question.id {
+                    let distance = Question::calculate_distance(&query_question.embedding, &question.embedding);
+                    similarities.push((question, distance));
+                }
+            }
         }
+        similarities.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        similarities.into_iter().map(|(q, _)| q).collect()
+    }
+
+    pub fn find_similar_terms_by_vector(&self, target_embedding: &Vec<f32>, top_n: usize) -> Vec<(Question, f32)> {
+        let mut similarities: Vec<(Question, f32)> = Vec::new();
+
+        for question in self.questions.iter() {
+            let distance = Question::calculate_distance(&question.embedding, target_embedding);
+            // Store (Question, distance). We'll sort by distance, so lower is better.
+            similarities.push((question.clone(), distance));
+        }
+
+        // Sort by distance (ascending)
+        similarities.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+
+        // Take top_n results
+        similarities.into_iter().take(top_n).collect()
     }
 }
 

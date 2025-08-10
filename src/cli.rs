@@ -39,4 +39,17 @@ pub enum Commands {
 
     /// Lists all terms and their embeddings
     ListTerms,
+
+    /// Queries the model for terms similar to a provided embedding vector
+    QueryByEmbedding {
+        embedding_str: String,
+        #[arg(long, default_value_t = 5)]
+        top_n: usize,
+    },
+
+    /// Finds terms whose embeddings match specific prime reciprocal patterns
+    MatchPrimePattern {
+        #[arg(long)]
+        table: bool,
+    },
 }

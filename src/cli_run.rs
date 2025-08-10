@@ -8,6 +8,8 @@ use crate::server::run_server;
 
 use reqwest; // For client HTTP calls in Start/Stop/Take
 
+use crate::handlers::match_prime_pattern; // NEW LINE
+
 impl Cli {
     pub async fn run(&self) -> Result<()> {
         let model_arc = Arc::new(Mutex::new(Model::new())); // Create a single Model instance
@@ -36,7 +38,8 @@ impl Cli {
                 if let Some(question) = model.get_question() {
                     println!("Question ID: {}", question.id);
                     println!("Question Text: {}", question.text);
-                    println!("Current Embedding: {:?}", question.embedding);
+                    println!("Current Embedding: {:?}
+", question.embedding); // Added \n for consistency
                 } else {
                     println!("No questions available.");
                 }
@@ -49,7 +52,8 @@ impl Cli {
                 if let Some(question) = model.get_question() {
                     println!("Question ID: {}", question.id);
                     println!("Question Text: {}", question.text);
-                    println!("Current Embedding: {:?}", question.embedding);
+                    println!("Current Embedding: {:?}
+", question.embedding); // Added \n for consistency
                 } else {
                     println!("No questions available.");
                 }
@@ -86,7 +90,7 @@ impl Cli {
                 // Check if term already exists
                 if model.questions.iter().any(|q| q.text == *term) {
                     println!("Term \"{}\" already exists. Use 'answer' command to update its embedding.", term);
-                    return Ok(())
+                    return Ok(()); // FIXED
                 }
 
                 let new_id = model.questions.len(); // Simple sequential ID
@@ -126,7 +130,7 @@ impl Cli {
                 let model = model_arc.lock().unwrap();
                 if terms.is_empty() {
                     println!("Please provide at least one term to query.");
-                    return Ok(());
+                    return Ok(()); // FIXED
                 }
 
                 // Query for each individual term
@@ -135,24 +139,24 @@ impl Cli {
                     for term_str in terms {
                         if let Some(question) = model.questions.iter().find(|q| q.text == *term_str) {
                             println!("\nQuerying for individual term: \"{}\"", term_str);
-                            println!("Current Embedding: {:?}\n", question.embedding);
+                            println!("Current Embedding: {:?}
+", question.embedding);
 
                             let similar_embeddings = model.find_similar_embeddings(&question.text);
                             if !similar_embeddings.is_empty() {
                                 println!("Most Similar Embeddings:");
                                 for sim_q in similar_embeddings {
                                     let distance = Question::calculate_distance(&question.embedding, &sim_q.embedding);
-                                    println!("  - ID: {}, Text: {}, Distance: {:.4}, Embedding: {:?}\n", sim_q.id, sim_q.text, distance, sim_q.embedding);
+                                    println!("  - ID: {}, Text: {}, Distance: {:.4}, Embedding: {:?}
+", sim_q.id, sim_q.text, distance, sim_q.embedding);
                                 }
                             } else {
-                                println!("No similar embeddings found for \"{}\".\n", term_str);
+                                println!("No similar embeddings found for \"{}\"\n", term_str);
                             }
-                        } else {
-                            println!("Term \"{}\" not found in embeddings. Skipping individual query.\n", term_str);
                         }
                     }
-                    println!("--- End Individual Term Queries ---\
-+");
+                    println!("--- End Individual Term Queries ---
+");
                 }
 
 
@@ -171,7 +175,7 @@ impl Cli {
 
                 if found_terms_count == 0 {
                     println!("No known terms found among the input. Cannot perform combined query.");
-                    return Ok(());
+                    return Ok(()); // FIXED
                 }
 
                 // Average the combined embedding
@@ -187,14 +191,16 @@ impl Cli {
                 };
 
                 println!("--- Combined Query ---");
-                println!("Combined Embedding for input terms: {:?}\n", combined_question.embedding);
+                println!("Combined Embedding for input terms: {:?}
+", combined_question.embedding);
 
                 let similar_embeddings = model.find_similar_embeddings(&combined_question.text);
                 if !similar_embeddings.is_empty() {
                     println!("\nMost Similar Embeddings to combined query:");
                     for sim_q in similar_embeddings {
                         let distance = Question::calculate_distance(&combined_question.embedding, &sim_q.embedding);
-                        println!("  - ID: {}, Text: {}, Distance: {:.4}, Embedding: {:?}\n", sim_q.id, sim_q.text, distance, sim_q.embedding);
+                        println!("  - ID: {}, Text: {}, Distance: {:.4}, Embedding: {:?}
+", sim_q.id, sim_q.text, distance, sim_q.embedding);
                     }
                 } else {
                     println!("No similar embeddings found for combined query.");
@@ -214,8 +220,30 @@ impl Cli {
                 println!("Listing all terms and their embeddings:");
                 let model = model_arc.lock().unwrap();
                 for question in model.questions.iter() {
-                    println!("ID: {}, Term: \"{}\", Embedding: {:?}", question.id, question.text, question.embedding);
+                    println!("ID: {}, Term: \"{}\", Embedding: {:?}
+", question.id, question.text, question.embedding);
                 }
+            }
+            Commands::QueryByEmbedding { embedding_str, top_n } => {
+                println!("Querying for terms similar to: {}", embedding_str);
+                let target_embedding = parse_embedding(embedding_str)
+                    .expect("Invalid embedding format for query-by-embedding");
+
+                let model = model_arc.lock().unwrap();
+                let similar_terms = (*model).find_similar_terms_by_vector(&target_embedding, *top_n);
+
+                if similar_terms.is_empty() {
+                    println!("No similar terms found.");
+                } else {
+                    println!("Top {} Similar Terms:", top_n);
+                    for (question, distance) in similar_terms {
+                        println!("  - ID: {}, Term: \"{}\", Distance: {:.4}, Embedding: {:?}
+", question.id, question.text, distance, question.embedding);
+                    }
+                }
+            }
+            Commands::MatchPrimePattern { table } => {
+                match_prime_pattern::run_match_prime_pattern_command(model_arc.clone(), *table);
             }
         }
         Ok(())
