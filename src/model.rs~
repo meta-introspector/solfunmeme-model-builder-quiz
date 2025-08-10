@@ -1,0 +1,102 @@
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fs;
+use rand::prelude::*; 
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Question {
+    pub id: usize,
+    pub text: String,
+    pub embedding: Vec<f32>,
+    pub is_missing_embedding: bool,
+}
+
+#[derive(Clone)]
+pub struct Model {
+    pub questions: Vec<Question>,
+    pub weights: Vec<f32>,
+}
+
+impl Model {
+    pub fn new() -> Self {
+        let embeddings_path = format!("{}/../../term_embeddings.json", env!("CARGO_MANIFEST_DIR"));
+        let embeddings_str = fs::read_to_string(&embeddings_path).expect("Could not read term_embeddings.json");
+        let mut raw_embeddings: HashMap<String, Vec<f32>> = serde_json::from_str(&embeddings_str).expect("Could not parse term_embeddings.json");
+
+        let mut terms_to_add = Vec::new();
+        for (term, _) in raw_embeddings.iter() {
+            if term.contains('_') {
+                for sub_term in term.split('_') {
+                    if !raw_embeddings.contains_key(sub_term) {
+                        terms_to_add.push(sub_term.to_string());
+                    }
+                }
+            }
+        }
+
+        let mut rng = thread_rng();
+        for term in terms_to_add {
+            let new_embedding: Vec<f32> = (0..8).map(|_| rng.gen_range(0.0..1.0)).collect();
+            raw_embeddings.insert(term, new_embedding);
+        }
+
+        let mut questions: Vec<Question> = raw_embeddings.into_iter().enumerate().map(|(id, (text, embedding))| {
+            let is_missing_embedding = !embeddings_str.contains(&format!("{{}}":, text));
+            Question { id, text, embedding, is_missing_embedding }
+        }).collect();
+
+        questions.sort_by(|a, b| b.is_missing_embedding.cmp(&a.is_missing_embedding));
+
+        let weights = vec![1.0; questions.len()];
+        Self { questions, weights }
+    }
+
+    pub fn save(&self) {
+        let embeddings_path = format!("{}/../../term_embeddings.json", env!("CARGO_MANIFEST_DIR"));
+        let mut raw_embeddings = HashMap::new();
+        for q in &self.questions {
+            raw_embeddings.insert(q.text.clone(), q.embedding.clone());
+        }
+        let json_str = serde_json::to_string_pretty(&raw_embeddings).expect("Could not serialize embeddings");
+        fs::write(&embeddings_path, json_str).expect("Could not write term_embeddings.json");
+    }
+
+    pub fn get_question(&self) -> Option<Question> {
+        let mut rng = thread_rng();
+        self.questions.choose_weighted(&mut rng, |item| self.weights[item.id]).ok().cloned()
+    }
+
+    pub fn update_weight(&mut self, question_id: usize, correct: bool) {
+        if correct {
+            self.weights[question_id] *= 1.1;
+        } else {
+            self.weights[question_id] *= 0.9;
+        }
+    }
+
+    pub fn update_embedding(&mut self, question_id: usize, submitted_embedding: Vec<f32>) {
+        if let Some(question) = self.questions.get_mut(question_id) {
+            for i in 0..question.embedding.len() {
+                question.embedding[i] = (question.embedding[i] + submitted_embedding[i]) / 2.0;
+            }
+        }
+    }
+
+    pub fn calculate_distance(embedding1: &[f32], embedding2: &[f32]) -> f32 {
+        embedding1.iter().zip(embedding2.iter()).map(|(a, b)| (a - b).powi(2)).sum::<f32>().sqrt()
+    }
+
+    pub fn find_similar_embeddings(&self, target_question: &Question) -> Vec<(Question, f32)> {
+        let mut similarities: Vec<(Question, f32)> = self.questions.iter()
+            .filter(|q| q.id != target_question.id) // Exclude the target question itself
+            .map(|q| {
+                let distance = Model::calculate_distance(&target_question.embedding, &q.embedding);
+                (q.clone(), distance)
+            })
+            .collect();
+
+        similarities.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)); // Sort by distance (ascending)
+
+        similarities.into_iter().take(5).collect() // Take top 5 most similar (smallest distance)
+    }
+}
