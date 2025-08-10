@@ -21,11 +21,22 @@ pub enum Commands {
     Stop,
     /// Takes a quiz
     Take,
-    /// Get a quiz question
+
+    /// Takes a quiz
     Quiz,
-    /// Submit an answer to a quiz question
-    Answer {
-        question_id: usize,
-        submitted_embedding_str: String,
-    },
+    /// Answers a quiz question
+    Answer { question_id: usize, submitted_embedding_str: String },
+
+    /// Inserts a new term and its embedding
+    Insert { term: String, embedding_str: String },
+    /// Updates an existing term's embedding
+    Update { term_id: usize, embedding_str: String },
+    /// Deletes a term
+    Delete { term_id: usize },
+
+    /// Queries the model for terms, providing individual and group matches
+    Query { #[arg(num_args = 1..)] terms: Vec<String> },
+
+    /// Lists all terms and their embeddings
+    ListTerms,
 }
