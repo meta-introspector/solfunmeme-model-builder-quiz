@@ -120,8 +120,21 @@ cargo test --manifest-path Cargo.toml
 For more detailed information, refer to the `docs/` directory:
 
 *   `docs/sops/ragit_embedding_quiz_sop.md`: Standard Operating Procedure for using the embedding quiz tool.
+*   `docs/sops/session_recovery_sop.md`: Standard Operating Procedure for recovering a session.
 *   `docs/testing_data.md`: Documentation for the training data used in this project.
 *   `docs/how_to_use.md`: Detailed usage guide (to be created).
 *   `docs/how_to_test.md`: Detailed testing guide (to be created).
 
 ---
+
+## Next Steps
+
+Here is the plan for the next phase of development:
+
+1.  **Continue the spinoff**: The `README.md` file has a "Next Task" to document the remaining CLI commands. I can start with that.
+
+2.  **Testing of the spinoff**: I can run the existing test suite to ensure everything is working as expected.
+
+3.  **Recruiting of members**: I can help you create a `CONTRIBUTING.md` file. This file would outline how new members can contribute to the project, including how to set up the development environment, the branching strategy, and the code of conduct.
+
+4.  **Update of the model**: I can use the interactive quiz to update the model. I can `take` a question, and then you can provide an `answer` to update the embeddings.
